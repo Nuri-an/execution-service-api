@@ -24,7 +24,7 @@ describe('RabbitMqEventBus', () => {
       close: jest.fn().mockResolvedValue(undefined),
     };
     const connection = {
-      createChannel: jest.fn().mockResolvedValue(channel),
+      createConfirmChannel: jest.fn().mockResolvedValue(channel),
       close: jest.fn().mockResolvedValue(undefined),
     };
 

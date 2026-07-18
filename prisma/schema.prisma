@@ -15,6 +15,12 @@ enum ExecutionStatus {
   CANCELLED
 }
 
+enum OutboxStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+}
+
 model Execution {
   id             String          @id @default(uuid())
   serviceOrderId String          @unique
@@ -30,4 +36,18 @@ model Execution {
 
   @@index([status, priority, createdAt])
   @@map("executions")
+}
+
+model OutboxEvent {
+  id          String       @id @default(uuid())
+  eventType   String
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  lockedAt    DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([status, createdAt])
+  @@map("outbox_events")
 }
