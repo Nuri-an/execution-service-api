@@ -1,0 +1,6 @@
+resources: [../../base, external-secrets.yaml]
+namespace: fiap-mecanica
+images:
+  - name: execution-service
+    newName: execution-service
+    newTag: latest

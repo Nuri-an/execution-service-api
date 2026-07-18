@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: execution-service, namespace: fiap-mecanica }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: execution-service } }
+  template:
+    metadata: { labels: { app: execution-service } }
+    spec:
+      initContainers:
+        - name: migrate
+          image: execution-service:latest
+          command: ["npx", "prisma", "migrate", "deploy"]
+          envFrom: [{ configMapRef: { name: execution-service-config } }, { secretRef: { name: execution-service-secrets } }]
+      containers:
+        - name: execution-service
+          image: execution-service:latest
+          ports: [{ containerPort: 3002 }]
+          envFrom: [{ configMapRef: { name: execution-service-config } }, { secretRef: { name: execution-service-secrets } }]
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          readinessProbe: { httpGet: { path: /api/v1/health, port: 3002 }, initialDelaySeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/v1/health, port: 3002 }, initialDelaySeconds: 20 }

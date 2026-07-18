@@ -1,0 +1,5 @@
+resources: [namespace.yaml, configmap.yaml, deployment.yaml, service.yaml]
+images:
+  - name: execution-service
+    newName: execution-service
+    newTag: latest
