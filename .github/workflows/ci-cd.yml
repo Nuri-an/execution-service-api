@@ -67,6 +67,12 @@ jobs:
       - run: npm run build
       - run: npm run test:cov
 
+      - name: Set up Java 17 for Sonar
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: SonarCloud analysis
         uses: SonarSource/sonarcloud-github-action@v1
         env:
