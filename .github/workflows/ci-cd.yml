@@ -67,13 +67,21 @@ jobs:
       - run: npm run build
       - run: npm run test:cov
 
-      - name: SonarQube quality gate
-        uses: SonarSource/sonarqube-scan-action@v3
+      - name: SonarCloud analysis
+        uses: SonarSource/sonarcloud-github-action@v1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
         with:
-          projectBaseDir: .
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=Nuri-an_execution-service-api
+            -Dsonar.projectName=execution-service-api
+            -Dsonar.sources=src
+            -Dsonar.tests=src
+            -Dsonar.test.inclusions=**/*.spec.ts
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.coverage.exclusions=**/*.module.ts,src/main.ts,**/*.dto.ts
+            -Dsonar.qualitygate.wait=true
 
   publish-deploy:
     needs: quality
