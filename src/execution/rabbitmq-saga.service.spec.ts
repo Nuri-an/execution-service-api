@@ -1,17 +1,17 @@
-import { connect } from 'amqplib';
-import { RabbitMqEventBus } from './rabbitmq-saga.service';
+import { connect } from "amqplib";
+import { RabbitMqEventBus } from "./rabbitmq-saga.service";
 
-jest.mock('amqplib', () => ({
+jest.mock("amqplib", () => ({
   connect: jest.fn(),
 }));
 
-describe('RabbitMqEventBus', () => {
+describe("RabbitMqEventBus", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.RABBITMQ_RETRY_DELAY_MS = '0';
+    process.env.RABBITMQ_RETRY_DELAY_MS = "0";
   });
 
-  it('retries connecting until RabbitMQ is available', async () => {
+  it("retries connecting until RabbitMQ is available", async () => {
     const connectMock = connect as unknown as jest.Mock;
     const channel = {
       assertExchange: jest.fn().mockResolvedValue(undefined),
@@ -28,7 +28,7 @@ describe('RabbitMqEventBus', () => {
       close: jest.fn().mockResolvedValue(undefined),
     };
 
-    connectMock.mockRejectedValueOnce(new Error('temporary failure'));
+    connectMock.mockRejectedValueOnce(new Error("temporary failure"));
     connectMock.mockResolvedValueOnce(connection);
 
     const bus = new RabbitMqEventBus();
