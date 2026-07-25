@@ -1,0 +1,132 @@
+name: Execution Service CI/CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'prisma/**'
+      - 'k8s/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - 'tsconfig.json'
+      - 'nest-cli.json'
+      - '.github/workflows/ci-cd.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'prisma/**'
+      - 'k8s/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - 'tsconfig.json'
+      - 'nest-cli.json'
+      - '.github/workflows/ci-cd.yml'
+
+env:
+  SERVICE: execution-service
+  IMAGE_NAME: execution-service
+  K8S_NAMESPACE: fiap-mecanica
+  K8S_DEPLOYMENT: execution-service
+
+jobs:
+  quality:
+    name: Build, test and quality gate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: execution, POSTGRES_PASSWORD: execution123, POSTGRES_DB: execution_db }
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U execution" --health-interval 5s --health-timeout 5s --health-retries 10
+      rabbitmq:
+        image: rabbitmq:3.12-alpine
+        ports: ['5672:5672']
+        options: --health-cmd "rabbitmq-diagnostics -q ping" --health-interval 10s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://execution:execution123@localhost:5432/execution_db?schema=public
+      MONGODB_URI: mongodb://localhost:27017/execution_logs
+      RABBITMQ_URL: amqp://guest:guest@localhost:5672
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma db push
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test:cov
+
+      - name: SonarQube quality gate
+        uses: SonarSource/sonarqube-scan-action@v3
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: .
+
+  publish-deploy:
+    needs: quality
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+          load: true
+
+      - uses: helm/kind-action@v1
+
+      - uses: azure/setup-kubectl@v4
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl create namespace fiap-mecanica --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl apply -k k8s/infra
+
+          kubectl wait --for=condition=available deployment/postgres \
+            -n fiap-mecanica --timeout=300s
+
+          kubectl wait --for=condition=available deployment/rabbitmq \
+            -n fiap-mecanica --timeout=300s
+
+          kubectl wait --for=condition=available deployment/mongo \
+            -n fiap-mecanica --timeout=300s
+
+          kubectl create secret generic execution-service-secrets \
+            --namespace fiap-mecanica \
+            --from-literal=DATABASE_URL=postgresql://execution:execution123@postgres:5432/execution_db?schema=public \
+            --from-literal=MONGODB_URI=mongodb://mongo:27017/execution_logs \
+            --from-literal=RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672 \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kind load docker-image ${{ env.IMAGE_NAME }}:latest
+
+          kubectl apply -k k8s/base
+
+          kubectl rollout status deployment/execution-service \
+            -n fiap-mecanica \
+            --timeout=300s
+      - name: Check resources
+        run: |
+          kubectl get all -n fiap-mecanica
