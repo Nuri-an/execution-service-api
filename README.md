@@ -51,3 +51,7 @@ docker compose up --build
 > MongoDB: localhost:27017
 
 The `DATABASE_URL`, `MONGODB_URI`, and `RABBITMQ_URL` credentials must be provided through Kubernetes Secrets. The ConfigMap contains only non-sensitive configuration values. The pipeline defined in `.github/workflows/execution-service.yml` performs the build, linting, tests with a minimum global coverage threshold of **80%**, SonarQube quality gate validation, image publishing to Amazon ECR, and deployment rollout to Amazon EKS.
+
+## Tests coverage
+<img width="1320" height="246" alt="Captura de Tela 2026-07-26 às 16 50 25" src="https://github.com/user-attachments/assets/3165e362-b980-462a-9aad-d27c88aec3f6" />
+
