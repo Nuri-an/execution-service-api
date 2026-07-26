@@ -10,11 +10,13 @@ spec:
       initContainers:
         - name: migrate
           image: execution-service:latest
+          imagePullPolicy: Never
           command: ["npx", "prisma", "migrate", "deploy"]
           envFrom: [{ configMapRef: { name: execution-service-config } }, { secretRef: { name: execution-service-secrets } }]
       containers:
         - name: execution-service
           image: execution-service:latest
+          imagePullPolicy: Never
           ports: [{ containerPort: 3002 }]
           envFrom: [{ configMapRef: { name: execution-service-config } }, { secretRef: { name: execution-service-secrets } }]
           resources:

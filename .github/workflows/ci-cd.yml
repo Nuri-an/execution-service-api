@@ -161,6 +161,10 @@ jobs:
           echo "=== Logs ==="
           kubectl logs -n fiap-mecanica -l app=execution-service --all-containers --tail=200
           
+      - name: Describe execution-service pod
+        if: failure()
+        run: |
+          kubectl describe pod -n fiap-mecanica $(kubectl get pods -n fiap-mecanica -l app=execution-service -o jsonpath='{.items[0].metadata.name}')
       - name: Check resources
         if: always()
         run: |
