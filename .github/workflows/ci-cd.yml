@@ -145,6 +145,23 @@ jobs:
           kubectl rollout status deployment/execution-service \
             -n fiap-mecanica \
             --timeout=300s
+
+      - name: Debug Kubernetes
+        if: failure()
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -n fiap-mecanica -o wide
+
+          echo "=== Describe execution-service ==="
+          kubectl describe deployment execution-service -n fiap-mecanica
+
+          echo "=== Describe pods ==="
+          kubectl describe pods -n fiap-mecanica
+
+          echo "=== Logs ==="
+          kubectl logs -n fiap-mecanica -l app=execution-service --all-containers --tail=200
+          
       - name: Check resources
+        if: always()
         run: |
           kubectl get all -n fiap-mecanica
